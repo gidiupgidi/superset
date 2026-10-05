@@ -52,6 +52,7 @@ import {
 } from "../lib/window-registry/window-registry";
 import {
 	getInitialWindowBounds,
+	getRestorableBounds,
 	loadWindowState,
 	loadWindows,
 	type PersistedWindow,
@@ -300,7 +301,11 @@ export function markAppQuitting(): void {
 
 function snapshotWindowState(window: BrowserWindow): WindowState {
 	const isMaximized = window.isMaximized();
-	const bounds = isMaximized ? window.getNormalBounds() : window.getBounds();
+	const bounds = getRestorableBounds({
+		bounds: window.getBounds(),
+		normalBounds: window.getNormalBounds(),
+		isMaximized,
+	});
 	return {
 		x: bounds.x,
 		y: bounds.y,
@@ -508,20 +513,9 @@ export async function createPlatformWindow({
 		if (saveTimeout) clearTimeout(saveTimeout);
 		saveTimeout = setTimeout(() => {
 			if (window.isDestroyed()) return;
-			const isMaximized = window.isMaximized();
-			const bounds = isMaximized
-				? window.getNormalBounds()
-				: window.getBounds();
-			const zoomLevel = window.webContents.getZoomLevel();
-			saveWindowState({
-				x: bounds.x,
-				y: bounds.y,
-				width: bounds.width,
-				height: bounds.height,
-				isMaximized,
-				zoomLevel,
-			});
-			persistedZoomLevel = zoomLevel;
+			const state = snapshotWindowState(window);
+			saveWindowState(state);
+			persistedZoomLevel = state.zoomLevel;
 			// Keep the multi-window restore set fresh as windows move/resize.
 			persistOpenWindows();
 		}, 500);
@@ -602,18 +596,9 @@ export async function createPlatformWindow({
 			return;
 		}
 		// Save window state first, before any cleanup
-		const isMaximized = window.isMaximized();
-		const bounds = isMaximized ? window.getNormalBounds() : window.getBounds();
-		const zoomLevel = window.webContents.getZoomLevel();
-		saveWindowState({
-			x: bounds.x,
-			y: bounds.y,
-			width: bounds.width,
-			height: bounds.height,
-			isMaximized,
-			zoomLevel,
-		});
-		persistedZoomLevel = zoomLevel;
+		const state = snapshotWindowState(window);
+		saveWindowState(state);
+		persistedZoomLevel = state.zoomLevel;
 
 		ipcHandler?.detachWindow(window);
 		unregisterWindow(window.id);

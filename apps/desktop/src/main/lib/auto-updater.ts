@@ -14,6 +14,7 @@ import {
 	isUpstreamServerError,
 } from "main/lib/update-error-classification";
 import { redactUpdateError } from "main/lib/update-error-redaction";
+import { markAppQuitting, persistOpenWindows } from "main/windows/main";
 import { gte, prerelease } from "semver";
 import {
 	AUTO_UPDATE_STATUS,
@@ -211,6 +212,8 @@ export function installUpdate(): void {
 	}
 	isInstalling = true;
 	setSkipQuitConfirmation();
+	markAppQuitting();
+	persistOpenWindows();
 	autoUpdater.quitAndInstall(false, true);
 }
 
