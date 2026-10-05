@@ -295,8 +295,15 @@ function stopSharedServices(): void {
 // Set during app quit so per-window close handlers don't shrink the persisted
 // set as windows close one-by-one — the full set is snapshotted in before-quit.
 let appQuitting = false;
-export function markAppQuitting(): void {
+
+export function snapshotWindowsForQuit(): void {
+	if (appQuitting) return;
 	appQuitting = true;
+	persistOpenWindows();
+}
+
+export function cancelAppQuitting(): void {
+	appQuitting = false;
 }
 
 function snapshotWindowState(window: BrowserWindow): WindowState {
@@ -317,7 +324,7 @@ function snapshotWindowState(window: BrowserWindow): WindowState {
 }
 
 /** Persist every open window's bounds + org so they can be restored on relaunch. */
-export function persistOpenWindows(): void {
+function persistOpenWindows(): void {
 	// Quit before initAppState() completed: windows are only created after init,
 	// so there is nothing to snapshot — appState access below would throw, and
 	// writing the empty set would clobber the previous session's restore state.
